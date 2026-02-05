@@ -9,7 +9,6 @@
 
 use std::rc::Rc;
 use std::cell::RefCell;
-use rstest::rstest; // Import rstest
 
 // Definition for singly-linked list.
 // Using Rc<RefCell<ListNode>> for shared mutable ownership to enable cycles.
@@ -29,11 +28,37 @@ impl ListNode {
     }
 }
 
-// Placeholder for the function to detect a cycle.
-// This will always return false for now, as the focus is on writing tests.
+// Implement Floyd's Tortoise and Hare algorithm here
 pub fn has_cycle(head: Option<Rc<RefCell<ListNode>>>) -> bool {
     // Implement Floyd's Tortoise and Hare algorithm here
-    false // TODO: Replace with actual implementation
+    // slow pointer checks nodes for one step
+    // fast pointer checks nodes for two steps
+    // when slow pointer address equals to fast pointer address, the List has a loop.
+    // when fast pointer reached None Node, the List has no loop.
+    let mut slow = head.clone();
+    let mut fast = if let Some(f) = head {
+        f.borrow().next.clone()
+    } else {
+        None
+    };
+
+    // when fast pointer is None, break the loop
+    while let (Some(s), Some(f)) = (slow, fast) {
+        if std::ptr::eq(s.as_ptr(), f.as_ptr()) { // Using std::ptr::eq for comparing Rc pointers
+            return true;
+        }
+
+        // move pointer for one step
+        slow = s.borrow().next.clone();
+
+        // move pointer for two steps
+        if let Some(f_next) = f.borrow().next.clone() {
+            fast = f_next.borrow().next.clone();
+        } else {
+            fast = None;
+        }
+    }
+    false
 }
 
 #[cfg(test)]
@@ -85,12 +110,20 @@ mod tests {
         case(&[1], -1, false), // Single node, no cycle
         case(&[1, 2, 3, 4, 5], -1, false), // Multiple nodes, no cycle
         case(&[1; 1000], -1, false), // Long list, no cycle
-        // Cycle Scenarios
+
+        // Cycle Scenarios (Existing)
         case(&[1], 0, true), // Single node, loop to itself
         case(&[1, 2], 0, true), // Two nodes, 2 -> 1
         case(&[3, 2, 0, -4], 1, true), // Cycle in middle: -4 -> 2
         case(&[1, 2, 3], 0, true), // Cycle end to head: 3 -> 1
-        case(&[0; 1000], 500, true) // Long list, cycle in middle
+        case(&[0; 1000], 500, true), // Long list, cycle in middle
+
+        // Adversarial Cycle Scenarios (New)
+        case(&[1, 2, 3, 4, 5], 4, true), // Short list, cycle at last node (5 -> 5)
+        case(&[1, 2, 3, 4, 5], 3, true), // Short list, cycle 5 -> 4 -> 3
+        case(&{ let mut v = vec![0; 1000]; for i in 0..1000 { v[i] = i as i32; } v }, 999, true), // Long list, cycle at last node (999 -> 999)
+        case(&{ let mut v = vec![0; 1000]; for i in 0..1000 { v[i] = i as i32; } v }, 900, true), // Long list, cycle starts very late
+        case(&{ let mut v = vec![0; 2]; for i in 0..2 { v[i] = i as i32; } v }, 1, true) // List [0, 1], 1 -> 1
     )]
     fn test_has_cycle(input_list: &[i32], pos: i32, expected: bool) {
         let head = build_list_with_cycle(input_list, pos);
