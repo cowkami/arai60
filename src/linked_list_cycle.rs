@@ -30,21 +30,18 @@ impl ListNode {
 
 // Implement Floyd's Tortoise and Hare algorithm here
 pub fn has_cycle(head: Option<Rc<RefCell<ListNode>>>) -> bool {
-    let mut slow = head.clone();
-    // get the next node
-    let mut fast = head.map_or(None, |n| n.borrow().next.clone());
+    let mut tortoise = head.clone();
+    let mut hare = head.clone().and_then(|n| n.borrow().next.clone());
 
-    while let (Some(s), Some(f)) = (slow, fast) {
-        if std::ptr::eq(s.as_ptr(), f.as_ptr()) {
+    while let (Some(t), Some(h)) = (tortoise, hare) {
+        if std::ptr::eq(t.as_ptr(), h.as_ptr()) {
             return true;
         }
 
-        // move pointer for one step
-        slow = s.borrow().next.clone();
-
-        // move poniter for two step
-        fast = f.borrow().next.clone().map_or(None, |n| n.borrow().next.clone());
+        tortoise = t.borrow().next.clone();
+        hare = h.borrow().next.clone().and_then(|n| n.borrow().next.clone());
     }
+
     false
 }
 
