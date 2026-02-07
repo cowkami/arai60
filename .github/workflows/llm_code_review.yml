@@ -37,6 +37,9 @@ jobs:
           OPENAI_API_ENDPOINT="https://api.openai.com/v1/chat/completions"
           OPENAI_MODEL="gpt-4o" # or "gpt-3.5-turbo", "gpt-4" etc.
 
+          # DEBUG: Confirm the secret is present (GitHub masks secrets in logs)
+          echo "LLM_API_KEY length: ${#LLM_API_KEY}"
+
           # Construct the prompt
           PROMPT="You are an expert software engineer acting as a code reviewer. Your task is to provide a thorough review of the following code changes.\n\nPlease analyze the provided diff and identify potential issues such as:\n- Bugs or logical errors\n- Performance issues\n- Security vulnerabilities\n- Violations of best practices or language idioms\n- Lack of clarity, comments, or documentation\n\nProvide your feedback in a structured Markdown format. If there are no issues, state that the code looks good.\n\nHere is the code diff to review:\n\`\`\`diff\n${DIFF_CONTENT}\n\`\`\`"
 
@@ -55,18 +58,20 @@ jobs:
               "temperature": 0.7
             }')
 
-          # Make the API call using curl
-          RESPONSE=$(curl -f -v -X POST \
+          # Make the API call using curl (capture body separately from status)
+          HTTP_STATUS=$(curl -sS -w "%{http_code}" -o response.json -X POST \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer ${LLM_API_KEY}" \
             -d "$PAYLOAD" \
-            "$OPENAI_API_ENDPOINT" 2>&1) # Removed -s, Added -f, -v, and 2>&1
+            "$OPENAI_API_ENDPOINT")
 
           # DEBUG: Print the raw API response to the console
-          echo "Raw OpenAI API Response: $RESPONSE"
+          echo "HTTP status: $HTTP_STATUS"
+          echo "Raw OpenAI API Response:"
+          cat response.json
 
           # Extract the content from the response
-          REVIEW_CONTENT=$(echo "$RESPONSE" | jq -r '.choices[0].message.content // "Error: Could not parse LLM response."')
+          REVIEW_CONTENT=$(jq -r '.choices[0].message.content // "Error: Could not parse LLM response."' response.json)
 
           # Output the review content for the next step
           echo "review_content<<EOF" >> $GITHUB_OUTPUT
