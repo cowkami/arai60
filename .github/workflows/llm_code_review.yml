@@ -56,11 +56,11 @@ jobs:
             }')
 
           # Make the API call using curl
-          RESPONSE=$(curl -s -X POST \
+          RESPONSE=$(curl -f -v -X POST \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer ${LLM_API_KEY}" \
             -d "$PAYLOAD" \
-            "$OPENAI_API_ENDPOINT")
+            "$OPENAI_API_ENDPOINT" 2>&1) # Removed -s, Added -f, -v, and 2>&1
 
           # DEBUG: Print the raw API response to the console
           echo "Raw OpenAI API Response: $RESPONSE"
