@@ -62,6 +62,9 @@ jobs:
             -d "$PAYLOAD" \
             "$OPENAI_API_ENDPOINT")
 
+          # DEBUG: Print the raw API response to the console
+          echo "Raw OpenAI API Response: $RESPONSE"
+
           # Extract the content from the response
           REVIEW_CONTENT=$(echo "$RESPONSE" | jq -r '.choices[0].message.content // "Error: Could not parse LLM response."')
 
