@@ -24,11 +24,11 @@ jobs:
       - name: "Get code diff"
         id: get_diff
         run: |
-          git diff ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }} > diff.txt
-          echo "diff_content=$(cat diff.txt)" >> $GITHUB_OUTPUT
-
-      # Removed: "Set up Python" step
-      # Removed: "Install dependencies" step
+          diff_output=$(git diff ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }})
+          # Using a multi-line delimiter to ensure the entire diff content is captured correctly
+          echo "diff_content<<EOF" >> $GITHUB_OUTPUT
+          echo "$diff_output" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: "Call LLM Reviewer (bash with curl)"
         id: llm_review
@@ -38,7 +38,19 @@ jobs:
           OPENAI_MODEL="gpt-4o" # or "gpt-3.5-turbo", "gpt-4" etc.
 
           # Construct the prompt
-          PROMPT="You are an expert software engineer acting as a code reviewer. Your task is to provide a thorough review of the following code changes.\n\nPlease analyze the provided diff and identify potential issues such as:\n- Bugs or logical errors\n- Performance issues\n- Security vulnerabilities\n- Violations of best practices or language idioms\n- Lack of clarity, comments, or documentation\n\nProvide your feedback in a structured Markdown format. If there are no issues, state that the code looks good.\n\nHere is the code diff to review:\n\`\`\`diff\n${DIFF_CONTENT}\n\`\`\`"
+          PROMPT="You are an expert software engineer acting as a code reviewer. Your task is to provide a thorough review of the following code changes.\n\nPlease analyze the provided diff and identify potential issues suchs:
+- Bugs or logical errors
+- Performance issues
+- Security vulnerabilities
+- Violations of best practices or language idioms
+- Lack of clarity, comments, or documentation
+
+Provide your feedback in a structured Markdown format. If there are no issues, state that the code looks good.
+
+Here is the code diff to review:
+\`\`\`diff
+${DIFF_CONTENT}
+\`\`\`"
 
           # Create JSON payload
           PAYLOAD=$(jq -n \
