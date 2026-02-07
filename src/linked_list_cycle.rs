@@ -30,33 +30,20 @@ impl ListNode {
 
 // Implement Floyd's Tortoise and Hare algorithm here
 pub fn has_cycle(head: Option<Rc<RefCell<ListNode>>>) -> bool {
-    // Implement Floyd's Tortoise and Hare algorithm here
-    // slow pointer checks nodes for one step
-    // fast pointer checks nodes for two steps
-    // when slow pointer address equals to fast pointer address, the List has a loop.
-    // when fast pointer reached None Node, the List has no loop.
     let mut slow = head.clone();
-    let mut fast = if let Some(f) = head {
-        f.borrow().next.clone()
-    } else {
-        None
-    };
+    // get the next node
+    let mut fast = head.map_or(None, |n| n.borrow().next.clone());
 
-    // when fast pointer is None, break the loop
     while let (Some(s), Some(f)) = (slow, fast) {
-        if std::ptr::eq(s.as_ptr(), f.as_ptr()) { // Using std::ptr::eq for comparing Rc pointers
+        if std::ptr::eq(s.as_ptr(), f.as_ptr()) {
             return true;
         }
 
         // move pointer for one step
         slow = s.borrow().next.clone();
 
-        // move pointer for two steps
-        if let Some(f_next) = f.borrow().next.clone() {
-            fast = f_next.borrow().next.clone();
-        } else {
-            fast = None;
-        }
+        // move poniter for two step
+        fast = f.borrow().next.clone().map_or(None, |n| n.borrow().next.clone());
     }
     false
 }
