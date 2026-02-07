@@ -1,0 +1,85 @@
+# .github/workflows/llm_code_review.yml
+
+name: "LLM Code Review"
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches:
+      - main
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout code"
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetch all history to get the diff
+
+      - name: "Get code diff"
+        id: get_diff
+        run: |
+          git diff ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }} > diff.txt
+          echo "diff_content=$(cat diff.txt)" >> $GITHUB_OUTPUT
+
+      # Removed: "Set up Python" step
+      # Removed: "Install dependencies" step
+
+      - name: "Call LLM Reviewer (bash with curl)"
+        id: llm_review
+        run: |
+          # Define OpenAI API details
+          OPENAI_API_ENDPOINT="https://api.openai.com/v1/chat/completions"
+          OPENAI_MODEL="gpt-4o" # or "gpt-3.5-turbo", "gpt-4" etc.
+
+          # Construct the prompt
+          PROMPT="You are an expert software engineer acting as a code reviewer. Your task is to provide a thorough review of the following code changes.\n\nPlease analyze the provided diff and identify potential issues such as:\n- Bugs or logical errors\n- Performance issues\n- Security vulnerabilities\n- Violations of best practices or language idioms\n- Lack of clarity, comments, or documentation\n\nProvide your feedback in a structured Markdown format. If there are no issues, state that the code looks good.\n\nHere is the code diff to review:\n\`\`\`diff\n${DIFF_CONTENT}\n\`\`\`"
+
+          # Create JSON payload
+          PAYLOAD=$(jq -n \
+            --arg model "$OPENAI_MODEL" \
+            --arg system_content "You are a helpful assistant." \
+            --arg user_content "$PROMPT" \
+            '{
+              "model": $model,
+              "messages": [
+                {"role": "system", "content": $system_content},
+                {"role": "user", "content": $user_content}
+              ],
+              "max_tokens": 1000,
+              "temperature": 0.7
+            }')
+
+          # Make the API call using curl
+          RESPONSE=$(curl -s -X POST \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${LLM_API_KEY}" \
+            -d "$PAYLOAD" \
+            "$OPENAI_API_ENDPOINT")
+
+          # Extract the content from the response
+          REVIEW_CONTENT=$(echo "$RESPONSE" | jq -r '.choices[0].message.content // "Error: Could not parse LLM response."')
+
+          # Output the review content for the next step
+          echo "review_content<<EOF" >> $GITHUB_OUTPUT
+          echo "$REVIEW_CONTENT" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+        env:
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }} # Securely stored API key
+          DIFF_CONTENT: ${{ steps.get_diff.outputs.diff_content }}
+
+      - name: "Post Review Comment"
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `### 🤖 LLM Code Review\n\n${{ steps.llm_review.outputs.review_content }}`
+            })
