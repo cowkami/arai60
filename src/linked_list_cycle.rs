@@ -47,22 +47,19 @@ pub fn has_cycle(head: Option<Rc<RefCell<ListNode>>>) -> bool {
 }
 
 pub fn has_cycle_iter(head: Option<Rc<RefCell<ListNode>>>) -> bool {
-    // advance one step
-    let slow = successors(
+    let slow_iter = successors(
         head.clone(),
-        |n| n.borrow().next.clone()
+        |n| n.borrow().next.as_ref().cloned()
     );
-    // advance two steps
-    let mut fast = successors(
+    let mut fast_iter = successors(
         head.clone(),
-        |n| n.borrow().next.clone().and_then(
-            |n| n.borrow().next.clone()
-        )
+        |n| n.borrow().next.as_ref().cloned()
+            .and_then(|n| n.borrow().next.as_ref().cloned())
     );
 
-    fast.next();
+    fast_iter.next();
 
-    zip(slow, fast).any(|(s, f)| std::ptr::eq(s.as_ptr(), f.as_ptr()))
+    zip(slow_iter, fast_iter).any(|(s, f)| std::ptr::eq(s.as_ptr(), f.as_ptr()))
 }
 
 #[cfg(test)]
