@@ -7,6 +7,7 @@
 // Return true if there is a cycle in the linked list. Otherwise, return false.
 
 
+use std::iter::{successors, zip};
 use std::rc::Rc;
 use std::cell::RefCell;
 
@@ -43,6 +44,25 @@ pub fn has_cycle(head: Option<Rc<RefCell<ListNode>>>) -> bool {
     }
 
     false
+}
+
+pub fn has_cycle_iter(head: Option<Rc<RefCell<ListNode>>>) -> bool {
+    // advance one step
+    let slow = successors(
+        head.clone(),
+        |n| n.borrow().next.clone()
+    );
+    // advance two steps
+    let mut fast = successors(
+        head.clone(),
+        |n| n.borrow().next.clone().and_then(
+            |n| n.borrow().next.clone()
+        )
+    );
+
+    fast.next();
+
+    zip(slow, fast).any(|(s, f)| std::ptr::eq(s.as_ptr(), f.as_ptr()))
 }
 
 #[cfg(test)]
@@ -112,5 +132,32 @@ mod tests {
     fn test_has_cycle(input_list: &[i32], pos: i32, expected: bool) {
         let head = build_list_with_cycle(input_list, pos);
         assert_eq!(has_cycle(head), expected);
+    }
+
+    #[rstest(
+        input_list, pos, expected,
+        // No Cycle Scenarios
+        case(&[], -1, false), // Empty list
+        case(&[1], -1, false), // Single node, no cycle
+        case(&[1, 2, 3, 4, 5], -1, false), // Multiple nodes, no cycle
+        case(&[1; 1000], -1, false), // Long list, no cycle
+
+        // Cycle Scenarios (Existing)
+        case(&[1], 0, true), // Single node, loop to itself
+        case(&[1, 2], 0, true), // Two nodes, 2 -> 1
+        case(&[3, 2, 0, -4], 1, true), // Cycle in middle: -4 -> 2
+        case(&[1, 2, 3], 0, true), // Cycle end to head: 3 -> 1
+        case(&[0; 1000], 500, true), // Long list, cycle in middle
+
+        // Adversarial Cycle Scenarios (New)
+        case(&[1, 2, 3, 4, 5], 4, true), // Short list, cycle at last node (5 -> 5)
+        case(&[1, 2, 3, 4, 5], 3, true), // Short list, cycle 5 -> 4 -> 3
+        case(&{ let mut v = vec![0; 1000]; for i in 0..1000 { v[i] = i as i32; } v }, 999, true), // Long list, cycle at last node (999 -> 999)
+        case(&{ let mut v = vec![0; 1000]; for i in 0..1000 { v[i] = i as i32; } v }, 900, true), // Long list, cycle starts very late
+        case(&{ let mut v = vec![0; 2]; for i in 0..2 { v[i] = i as i32; } v }, 1, true) // List [0, 1], 1 -> 1
+    )]
+    fn test_has_cycle_iter(input_list: &[i32], pos: i32, expected: bool) {
+        let head = build_list_with_cycle(input_list, pos);
+        assert_eq!(has_cycle_iter(head), expected);
     }
 }
