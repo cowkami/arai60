@@ -6,10 +6,10 @@
 //
 // Return true if there is a cycle in the linked list. Otherwise, return false.
 
-
+use std::cell::RefCell;
+use std::collections::HashSet;
 use std::iter::{successors, zip};
 use std::rc::Rc;
-use std::cell::RefCell;
 
 // Definition for singly-linked list.
 // Using Rc<RefCell<ListNode>> for shared mutable ownership to enable cycles.
@@ -22,10 +22,7 @@ pub struct ListNode {
 impl ListNode {
     #[inline]
     pub fn new(val: i32) -> Self {
-        ListNode {
-            val,
-            next: None,
-        }
+        ListNode { val, next: None }
     }
 }
 
@@ -40,26 +37,42 @@ pub fn has_cycle(head: Option<Rc<RefCell<ListNode>>>) -> bool {
         }
 
         tortoise = t.borrow().next.clone();
-        hare = h.borrow().next.clone().and_then(|n| n.borrow().next.clone());
+        hare = h
+            .borrow()
+            .next
+            .clone()
+            .and_then(|n| n.borrow().next.clone());
     }
 
     false
 }
 
 pub fn has_cycle_iter(head: Option<Rc<RefCell<ListNode>>>) -> bool {
-    let slow_iter = successors(
-        head.clone(),
-        |n| n.borrow().next.as_ref().cloned()
-    );
-    let mut fast_iter = successors(
-        head.clone(),
-        |n| n.borrow().next.as_ref().cloned()
+    let slow_iter = successors(head.clone(), |n| n.borrow().next.as_ref().cloned());
+    let mut fast_iter = successors(head.clone(), |n| {
+        n.borrow()
+            .next
+            .as_ref()
+            .cloned()
             .and_then(|n| n.borrow().next.as_ref().cloned())
-    );
+    });
 
     fast_iter.next();
 
     zip(slow_iter, fast_iter).any(|(s, f)| std::ptr::eq(s.as_ptr(), f.as_ptr()))
+}
+
+pub fn has_cycle_set(head: Option<Rc<RefCell<ListNode>>>) -> bool {
+    let mut node = head.clone();
+    let mut checked_nodes = HashSet::new();
+    while let Some(n) = node {
+        if checked_nodes.contains(&n.as_ptr()) {
+            return true;
+        }
+        checked_nodes.insert(n.as_ptr());
+        node = n.borrow().next.clone();
+    }
+    false
 }
 
 #[cfg(test)]
@@ -156,5 +169,32 @@ mod tests {
     fn test_has_cycle_iter(input_list: &[i32], pos: i32, expected: bool) {
         let head = build_list_with_cycle(input_list, pos);
         assert_eq!(has_cycle_iter(head), expected);
+    }
+
+    #[rstest(
+        input_list, pos, expected,
+        // No Cycle Scenarios
+        case(&[], -1, false), // Empty list
+        case(&[1], -1, false), // Single node, no cycle
+        case(&[1, 2, 3, 4, 5], -1, false), // Multiple nodes, no cycle
+        case(&[1; 1000], -1, false), // Long list, no cycle
+
+        // Cycle Scenarios (Existing)
+        case(&[1], 0, true), // Single node, loop to itself
+        case(&[1, 2], 0, true), // Two nodes, 2 -> 1
+        case(&[3, 2, 0, -4], 1, true), // Cycle in middle: -4 -> 2
+        case(&[1, 2, 3], 0, true), // Cycle end to head: 3 -> 1
+        case(&[0; 1000], 500, true), // Long list, cycle in middle
+
+        // Adversarial Cycle Scenarios (New)
+        case(&[1, 2, 3, 4, 5], 4, true), // Short list, cycle at last node (5 -> 5)
+        case(&[1, 2, 3, 4, 5], 3, true), // Short list, cycle 5 -> 4 -> 3
+        case(&{ let mut v = vec![0; 1000]; for i in 0..1000 { v[i] = i as i32; } v }, 999, true), // Long list, cycle at last node (999 -> 999)
+        case(&{ let mut v = vec![0; 1000]; for i in 0..1000 { v[i] = i as i32; } v }, 900, true), // Long list, cycle starts very late
+        case(&{ let mut v = vec![0; 2]; for i in 0..2 { v[i] = i as i32; } v }, 1, true) // List [0, 1], 1 -> 1
+    )]
+    fn test_has_cycle_set(input_list: &[i32], pos: i32, expected: bool) {
+        let head = build_list_with_cycle(input_list, pos);
+        assert_eq!(has_cycle_set(head), expected);
     }
 }
