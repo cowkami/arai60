@@ -84,11 +84,10 @@ pub fn detect_cycle(head: Option<Rc<RefCell<ListNode>>>) -> Option<Rc<RefCell<Li
     let mut node = head;
     let mut checked = HashSet::new();
     while let Some(n) = node {
-        let node_ptr = n.as_ptr() as *const ListNode;
-        if checked.contains(&node_ptr) {
+        if checked.contains(&n.as_ptr()) {
             return Some(n);
         }
-        checked.insert(node_ptr);
+        checked.insert(n.as_ptr());
         node = n.borrow().next.clone();
     }
     None
