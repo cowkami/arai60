@@ -72,7 +72,9 @@ pub fn delete_duplicates_third(
     head
 }
 
-pub fn delete_duplicates(head: Option<Rc<RefCell<ListNode>>>) -> Option<Rc<RefCell<ListNode>>> {
+pub fn delete_duplicates_forth(
+    head: Option<Rc<RefCell<ListNode>>>,
+) -> Option<Rc<RefCell<ListNode>>> {
     if head.is_none() {
         return None;
     }
@@ -87,6 +89,40 @@ pub fn delete_duplicates(head: Option<Rc<RefCell<ListNode>>>) -> Option<Rc<RefCe
         }
         _ => None,
     }
+}
+
+pub fn delete_duplicates_fifth(
+    head: Option<Rc<RefCell<ListNode>>>,
+) -> Option<Rc<RefCell<ListNode>>> {
+    let mut curr = head.clone();
+    while let Some(c) = curr {
+        let mut scan = c.borrow().next.clone();
+        while let Some(s) = scan.clone() {
+            if c.borrow().val != s.borrow().val {
+                break;
+            }
+            scan = s.borrow().next.clone();
+        }
+        c.borrow_mut().next = scan;
+        curr = c.borrow().next.clone();
+    }
+    head
+}
+
+pub fn delete_duplicates(head: Option<Rc<RefCell<ListNode>>>) -> Option<Rc<RefCell<ListNode>>> {
+    let mut current = head.clone();
+    while let Some(c) = current {
+        let mut scan = c.borrow().next.clone();
+        while let Some(s) = scan.clone() {
+            if c.borrow().val != s.borrow().val {
+                break;
+            }
+            scan = s.borrow().next.clone();
+        }
+        c.borrow_mut().next = scan;
+        current = c.borrow().next.clone();
+    }
+    head
 }
 
 #[cfg(test)]
