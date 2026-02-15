@@ -20,7 +20,9 @@ impl ListNode {
     }
 }
 
-pub fn delete_duplicates(head: Option<Rc<RefCell<ListNode>>>) -> Option<Rc<RefCell<ListNode>>> {
+pub fn delete_duplicates_first(
+    head: Option<Rc<RefCell<ListNode>>>,
+) -> Option<Rc<RefCell<ListNode>>> {
     let mut current = head.clone();
     while let (Some(c), Some(n)) = (
         current.clone(),
@@ -29,6 +31,21 @@ pub fn delete_duplicates(head: Option<Rc<RefCell<ListNode>>>) -> Option<Rc<RefCe
         if c.borrow().val == n.borrow().val {
             c.borrow_mut().next = n.borrow().next.clone();
             current = Some(c);
+        } else {
+            current = c.borrow().next.clone();
+        }
+    }
+    head
+}
+
+pub fn delete_duplicates(head: Option<Rc<RefCell<ListNode>>>) -> Option<Rc<RefCell<ListNode>>> {
+    let mut current = head.clone();
+    while let (Some(c), Some(n)) = (
+        current.clone(),
+        current.clone().and_then(|n| n.borrow().next.clone()),
+    ) {
+        if c.borrow().val == n.borrow().val {
+            c.borrow_mut().next = n.borrow().next.clone();
         } else {
             current = c.borrow().next.clone();
         }
